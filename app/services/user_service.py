@@ -9,7 +9,7 @@ from app.core.config import Settings
 from app.core.time_utils import utc_now
 from app.db.models import User
 from app.repositories.users import add_user, get_next_user_numeric_id, get_user_by_uid
-from app.schemas.users import UserMeUpdateRequest, UserSyncRequest
+from app.schemas.users import UserDetailsRequest, UserMeUpdateRequest, UserSyncRequest
 from app.services.firebase_auth import get_firebase_user, verify_firebase_id_token
 
 
@@ -133,3 +133,23 @@ def update_me(*, db: Session, uid: str, payload: UserMeUpdateRequest, settings: 
     db.commit()
     db.refresh(user)
     return build_user_profile_result(user=user, settings=settings)
+
+
+def update_user_details(*, db: Session, uid: str, payload: UserDetailsRequest) -> User:
+    user = get_user_by_uid(db, uid)
+    if user is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="사용자를 찾을 수 없습니다.")
+
+    # 기존 API에서는 사용자 이름을 nickname으로 관리하고 있으므로
+    # 캡처본 API의 name 값을 nickname에 저장한다.
+    user.nickname = payload.name
+    user.age_group = payload.ageGroup
+    user.job = payload.job
+    user.main_bank = payload.mainBank
+    user.residence = payload.residence
+
+    db.flush()
+    db.commit()
+    db.refresh(user)
+    return user
+

@@ -7,3 +7,6 @@ firebase-service-account.json
 *.logfraudprevention-fcca9-firebase-adminsdk-fbsvc-ed5f1f84ea.json
 .env
 .venv/
+
+# Firebase Admin SDK key
+*firebase-adminsdk*.json

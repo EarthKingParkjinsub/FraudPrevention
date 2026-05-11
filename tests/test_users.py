@@ -80,3 +80,40 @@ def test_patch_me_updates_nickname_and_profile_image(client: TestClient, auth_he
     me_body = me_response.json()["user"]
     assert me_body["nickname"] == "patched-name"
     assert me_body["profileImageUrl"] == "https://cdn.example.com/profile.jpg"
+
+def test_patch_me_details_updates_profile_details(client: TestClient, auth_headers: dict[str, str]):
+    _sync_default_user(client)
+
+    response = client.patch(
+        "/api/users/me/details",
+        headers=auth_headers,
+        json={
+            "name": "홍길동",
+            "ageGroup": "20대",
+            "job": "대학생",
+            "mainBank": "국민은행",
+            "residence": "서울특별시 강남구",
+        },
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["status"] == "success"
+    assert body["message"] == "사용자 상세 정보가 성공적으로 저장되었습니다."
+    assert body["data"]["id"] == 1
+    assert body["data"]["name"] == "홍길동"
+    assert body["data"]["ageGroup"] == "20대"
+    assert body["data"]["job"] == "대학생"
+    assert body["data"]["mainBank"] == "국민은행"
+    assert body["data"]["residence"] == "서울특별시 강남구"
+    assert body["data"]["updatedAt"]
+
+    me_response = client.get("/api/users/me", headers=auth_headers)
+    assert me_response.status_code == 200
+    me_body = me_response.json()["user"]
+    assert me_body["nickname"] == "홍길동"
+    assert me_body["ageGroup"] == "20대"
+    assert me_body["job"] == "대학생"
+    assert me_body["mainBank"] == "국민은행"
+    assert me_body["residence"] == "서울특별시 강남구"
+

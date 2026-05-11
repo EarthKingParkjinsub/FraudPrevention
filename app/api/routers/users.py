@@ -9,6 +9,9 @@ from app.core.config import Settings, get_settings
 from app.core.time_utils import to_iso_z
 from app.db.session import get_db
 from app.schemas.users import (
+    UserDetailsData,
+    UserDetailsRequest,
+    UserDetailsResponse,
     UserMeItem,
     UserMeResponse,
     UserMeUpdateRequest,
@@ -17,7 +20,7 @@ from app.schemas.users import (
     UserSyncRequest,
     UserSyncResponse,
 )
-from app.services.user_service import get_me, sync_user, sync_user_from_firebase_token, update_me
+from app.services.user_service import get_me, sync_user, sync_user_from_firebase_token, update_me, update_user_details
 
 router = APIRouter(prefix="/api/users", tags=["users"])
 bearing_scheme = HTTPBearer(auto_error=False)
@@ -70,6 +73,10 @@ def get_me_endpoint(
             email=user.email,
             provider=user.provider,
             nickname=user.nickname,
+            ageGroup=user.age_group,
+            job=user.job,
+            mainBank=user.main_bank,
+            residence=user.residence,
             emailVerified=result.email_verified,
             profileImageUrl=result.profile_image_url,
             isNewUser=result.is_new_user,
@@ -95,6 +102,10 @@ def patch_me_endpoint(
             email=user.email,
             provider=user.provider,
             nickname=user.nickname,
+            ageGroup=user.age_group,
+            job=user.job,
+            mainBank=user.main_bank,
+            residence=user.residence,
             emailVerified=result.email_verified,
             profileImageUrl=result.profile_image_url,
             isNewUser=result.is_new_user,
@@ -102,3 +113,23 @@ def patch_me_endpoint(
             updatedAt=to_iso_z(user.updated_at) or "",
         )
     )
+
+@router.patch("/me/details", response_model=UserDetailsResponse)
+def patch_me_details_endpoint(
+    payload: UserDetailsRequest,
+    current_user: Annotated[AuthenticatedUser, Depends(get_current_user)],
+    db: Annotated[Session, Depends(get_db)],
+) -> UserDetailsResponse:
+    user = update_user_details(db=db, uid=current_user.uid, payload=payload)
+    return UserDetailsResponse(
+        data=UserDetailsData(
+            id=user.id,
+            name=user.nickname,
+            ageGroup=user.age_group or "",
+            job=user.job or "",
+            mainBank=user.main_bank or "",
+            residence=user.residence or "",
+            updatedAt=to_iso_z(user.updated_at) or "",
+        )
+    )
+
