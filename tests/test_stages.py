@@ -1,4 +1,4 @@
-from fastapi.testclient import TestClient
+﻿from fastapi.testclient import TestClient
 
 
 def _sync_default_user(client: TestClient) -> None:
@@ -196,6 +196,50 @@ def test_start_round_worker_initial_message_and_resume_no_duplicate(
 
     settings.ai_worker_enabled = original_enabled
     settings.ai_worker_token = original_token
+
+
+def test_start_round_worker_uses_token_without_explicit_enabled(
+    client: TestClient,
+    auth_headers: dict[str, str],
+    monkeypatch,
+):
+    from app.core.config import get_settings
+
+    _sync_default_user(client)
+    monkeypatch.setattr("app.services.scenario_selector.choose_is_fraud", lambda: False)
+    settings = get_settings()
+    original_enabled = settings.ai_worker_enabled
+    original_token = settings.ai_worker_token
+    settings.ai_worker_enabled = False
+    settings.ai_worker_token = "test-token"
+
+    calls = {"count": 0}
+
+    def _fake_worker(*, settings, payload):
+        from app.services.ai import AIReply
+
+        calls["count"] += 1
+        return AIReply(
+            content="token enabled initial ai",
+            is_evidence=False,
+            evidence_reason=None,
+            input_tokens=None,
+            output_tokens=None,
+            latency_ms=1,
+            worker_is_conversation_over=False,
+        )
+
+    monkeypatch.setattr("app.services.stage_service.call_normal_worker", _fake_worker)
+
+    try:
+        start = client.post("/api/v1/stages/1/rounds", headers=auth_headers)
+        assert start.status_code == 200
+        data = start.json()["data"]
+        assert data["initial_message"]["content"] == "token enabled initial ai"
+        assert calls["count"] == 1
+    finally:
+        settings.ai_worker_enabled = original_enabled
+        settings.ai_worker_token = original_token
 
 
 def test_round_stores_stable_scenario_context(client: TestClient, db_session, auth_headers: dict[str, str], monkeypatch):

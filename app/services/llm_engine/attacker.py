@@ -25,7 +25,7 @@ class AttackerEngine:
             api_key=settings.llm_studio_api_key
         )
         self.model_name = settings.llm_studio_model
-        
+
         # CSV 경로 설정 (현재 백엔드 디렉토리 기준)
         self.project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../"))
         self.file_map = {
@@ -68,7 +68,7 @@ class AttackerEngine:
                 {"goal": "가계약금 편취", "method": "매물 선점을 위한 즉시 이체 종용"}
             ]
         }
-        
+
         goals = category_goals.get(category, category_goals["보이스피싱"])
         selected_goal = random.choice(goals)
 
@@ -90,7 +90,7 @@ class AttackerEngine:
                 "name": "김철수 실장", "role": "공인중개사 사무소 실장", "pretext": "역세권 오피스텔 급매물 선점", "amount": 2000000, "account": "농협은행 302-0045-1234-51 (김철수 부동산)"
             }
         }
-        
+
         conf = default_configs.get(category, default_configs["보이스피싱"])
 
         default_scenario = {
@@ -115,12 +115,12 @@ class AttackerEngine:
                 valid_p = df_p[df_p['판례내용'].notna()]
                 if not valid_p.empty:
                     precedent_text = str(valid_p.sample(n=1).iloc[0]['판례내용'])[:1500]
-            
+
             if os.path.exists(self.fss_path):
                 df_f = pd.read_csv(self.fss_path)
                 if random.random() > 0.3:
                     match_f = df_f[df_f['content'].str.contains(category[:2], na=False)]
-                    if not match_f.empty: 
+                    if not match_f.empty:
                         fss_text = str(match_f.sample(n=1).iloc[0]['content'])[:1500]
                 if not fss_text:
                     fss_text = str(df_f.sample(n=1).iloc[0]['content'])[:1500]
@@ -171,18 +171,18 @@ class AttackerEngine:
     ) -> Dict[str, Any]:
         # 1. 심리 분석
         user_state = self.analyze_user_state(history)
-        
+
         # 2. 단계 결정
         stages = SCENARIO_STAGES.get(category, ["접근", "신뢰형성", "의심대응", "위협_압박", "행동유도", "마무리"])
-        
+
         # 간단한 단계 결정 로직
         user_in = history[-1]['content'] if history and history[-1]['role'] == 'user' else ""
-        
+
         if user_state.get('compliance', 0) > 90 and any(kw in user_in for kw in ["보냈", "송금", "입금", "완료"]):
             current_stage = "마무리"
-        elif user_state.get('suspicion', 0) > 85: 
+        elif user_state.get('suspicion', 0) > 85:
             current_stage = "위협_압박" if "위협_압박" in stages else stages[-2]
-        elif user_state.get('compliance', 0) > 80: 
+        elif user_state.get('compliance', 0) > 80:
             current_stage = "행동유도" if "행동유도" in stages else stages[-2]
         else:
             idx = min(len(stages)-1, len(history) // 4)
@@ -190,7 +190,7 @@ class AttackerEngine:
 
         stage_guide = STAGE_GUIDELINES.get(current_stage, "")
         base_prompt = CATEGORY_PROMPTS.get(category, "")
-        
+
         goal_instruction = GOAL_INSTRUCTION_TEMPLATE.format(
             main_goal=scenario_data.get('main_goal', '송금 유도'),
             attack_method=scenario_data.get('attack_method', '직접 송금 요구'),
@@ -212,9 +212,9 @@ class AttackerEngine:
             stage_guide=stage_guide,
             user_state=json.dumps(user_state, ensure_ascii=False)
         )
-        
+
         messages = [{"role": "system", "content": instruction}] + history[-8:]
-        
+
         try:
             response = self.client.chat.completions.create(
                 model=self.model_name,
@@ -224,9 +224,9 @@ class AttackerEngine:
             reply = response.choices[0].message.content.strip()
         except:
             reply = "연결이 잠시 끊겼습니다. 다시 말씀해 주시겠어요?"
-            
+
         sanitized_reply = self._sanitize_response(reply)
-        
+
         # 3. 사기 혐의점(is_evidence) 판정 로직
         evidence_stages = ["행동유도", "결제유도", "계약유도", "위협_압박", "재촉_압박", "마무리"]
         is_evidence = (current_stage in evidence_stages) or ("http" in sanitized_reply.lower())
