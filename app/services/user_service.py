@@ -1,4 +1,4 @@
-from __future__ import annotations
+    from __future__ import annotations
 
 from dataclasses import dataclass
 
@@ -67,9 +67,11 @@ def sync_user(*, db: Session, payload: UserSyncRequest) -> SyncUserResult:
         add_user(db, user)
     else:
         user.email = payload.email
-        user.nickname = payload.nickname
+        if not user.nickname:
+            user.nickname = payload.nickname
         user.provider = payload.provider
-        user.profile_image = payload.profile_image
+        if not user.profile_image:
+            user.profile_image = payload.profile_image
         user.last_login_at = utc_now()
         db.flush()
 
