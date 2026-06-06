@@ -1,4 +1,4 @@
-﻿from fastapi.testclient import TestClient
+from fastapi.testclient import TestClient
 
 
 def _sync_default_user(client: TestClient) -> None:
@@ -293,9 +293,10 @@ def test_normal_prompt_catalog_contains_handoff_required_context_fields():
             assert prompt.scenario_type == genre
             assert prompt.scenario_variant == variant
             assert required_keys <= set(prompt.scenario_context)
-            assert prompt.situation_prompt.startswith("상황: ")
-            assert "\n현재 단계: " in prompt.situation_prompt
-            assert "\n내가 하려는 것: " in prompt.situation_prompt
+            assert prompt.situation_prompt.startswith("상황: 사용자는 ")
+            assert "현재" in prompt.situation_prompt
+            assert "상대방은" in prompt.situation_prompt
+            assert "사용자는" in prompt.situation_prompt
 
 
 def test_start_round_worker_payload_uses_prompt_source_handoff_context(
@@ -343,9 +344,10 @@ def test_start_round_worker_payload_uses_prompt_source_handoff_context(
         start = client.post("/api/v1/stages/1/rounds", headers=auth_headers)
         assert start.status_code == 200
         data = start.json()["data"]
-        assert data["situation_prompt"].startswith("상황: 은행에서 로그인/이체 이상 징후 알림을 받은 상황")
-        assert "현재 단계: 이상거래 알림을 받고 본인 확인 절차를 문의하는 단계" in data["situation_prompt"]
-        assert "내가 하려는 것: 내 계좌가 안전한지 확인하고 공식 보호 절차를 진행하고 싶음" in data["situation_prompt"]
+        assert data["situation_prompt"].startswith("상황: 사용자는 은행에서 로그인/이체 이상 징후 알림을 받은 상황")
+        assert "현재 이상거래 알림을 받고 본인 확인 절차를 문의하는 단계" in data["situation_prompt"]
+        assert "상대방은 국민은행 보안센터 상담원" in data["situation_prompt"]
+        assert "사용자는 내 계좌가 안전한지 확인하고 공식 보호 절차를 진행하고 싶어 한다" in data["situation_prompt"]
         assert data["ai_name"] == "국민은행 보안센터 상담원"
 
         payload = captured["payload"]
